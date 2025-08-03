@@ -42,7 +42,10 @@ class PostRetrieveUpdateDelete(RetrieveUpdateDestroyAPIView):
 
 
 class PostImage(APIView):
+    permission_classes = [PostPermission]
+    
     def get(self,request,post_id):
+        self.check_permissions(request)
         post = get_object_or_404(Post,id=post_id)
         if post.image:
             return FileResponse(post.image,as_attachment=False)
@@ -50,6 +53,7 @@ class PostImage(APIView):
     
     def post(self,request,post_id):
         post = get_object_or_404(Post,id=post_id)
+        self.check_object_permissions(request,post)
         if post.image:
             post.image.delete()
             post.save()
@@ -61,6 +65,7 @@ class PostImage(APIView):
 
     def delete(self,request,post_id):
         post = get_object_or_404(Post,id=post_id)
+        self.check_object_permissions(request,post)
         if post.image:
             post.image.delete()
             post.save()
