@@ -28,7 +28,7 @@ class PostsListCreate(ListCreateAPIView):
 
 
 class PostRetrieveUpdateDelete(RetrieveUpdateDestroyAPIView):
-    lookup_field = 'id'
+    lookup_field = 'post_id'
     serializer_class = PostSerializer
     queryset = Post.objects.all()
     permission_classes = [PostPermission]

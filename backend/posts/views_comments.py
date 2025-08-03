@@ -1,5 +1,5 @@
 from rest_framework.decorators import api_view
-from rest_framework.generics import ListCreateAPIView
+from rest_framework.generics import ListCreateAPIView,RetrieveUpdateDestroyAPIView
 from .permissions import PostPermission
 from .serializers import CommentSerializer
 from django.shortcuts import get_object_or_404
@@ -36,3 +36,14 @@ class CommentListCreate(ListCreateAPIView):
     def get_queryset(self):
         post = self.get_object()
         return Comment.objects.filter(post=post)
+
+
+class CommentRetrieveUpdateDelete(RetrieveUpdateDestroyAPIView):
+    lookup_field = 'comment_id'
+    serializer_class = CommentSerializer
+    queryset = Comment.objects.all()
+    permission_classes = [PostPermission]
+
+    def get_object(self):
+        comment_id = self.kwargs.get('comment_id')
+        return get_object_or_404(Comment, id=comment_id)
