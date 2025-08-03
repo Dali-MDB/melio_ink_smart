@@ -1,7 +1,7 @@
 from rest_framework.decorators import api_view,permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import UserSerializer
+from .serializers import UserSerializer,ProfileSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
@@ -18,9 +18,9 @@ def generate_tokens(user):
 
 @api_view(['POST'])
 def register(request):
-    user_ser = UserSerializer(data=request.data)
-    if user_ser.is_valid():
-        user = user_ser.save()
+    prof_ser = ProfileSerializer(data=request.data)
+    if prof_ser.is_valid():
+        user = prof_ser.save()
         #we generate the refresh and access token
         refresh_token,access_token = generate_tokens(user)
         return Response(
@@ -31,7 +31,7 @@ def register(request):
             },
             status=status.HTTP_200_OK
         )
-    return Response(user_ser.errors,status=status.HTTP_400_BAD_REQUEST)
+    return Response(prof_ser.errors,status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])
