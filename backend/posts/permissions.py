@@ -29,3 +29,15 @@ class CommentPermission(BasePermission):
             return False
 
 
+
+
+class IsAdminOrReadOnly(BasePermission):
+    
+    def has_permission(self, request, view):
+        print("User:", request.user)
+        print("Auth:", request.auth)
+        print("Is staff:", request.user.is_staff if request.user.is_authenticated else None)
+        print("Method:", request.method)
+        if request.method in SAFE_METHODS:
+            return True
+        return request.user.is_authenticated and request.user.is_staff

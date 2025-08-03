@@ -1,6 +1,6 @@
 from rest_framework.serializers import Serializer,ModelSerializer
 from rest_framework import serializers
-from .models import Post,Comment
+from .models import Post,Comment,Tag
 from users.serializers import UserSerializer
 
 class PostSerializer(ModelSerializer):
@@ -35,3 +35,9 @@ class CommentSerializer(ModelSerializer):
         children = obj.sub_comments.all()
         return CommentSerializer(children, many=True).data
 
+
+
+class TagSerializer(ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = ['id','name']
