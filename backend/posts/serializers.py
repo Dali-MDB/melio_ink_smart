@@ -1,4 +1,5 @@
 from rest_framework.serializers import Serializer,ModelSerializer
+from rest_framework import serializers
 from .models import Post,Comment
 from users.serializers import UserSerializer
 
@@ -18,7 +19,7 @@ class PostSerializer(ModelSerializer):
 
 
 class CommentSerializer(ModelSerializer):
-    #sub_comments = CommentSerializer(many=True)
+    sub_comments = serializers.SerializerMethodField()
     class Meta:
         model = Comment
         fields = ['id','owner' ,'post' ,'content' ,'created_at' ,'sub_comments','parent_comment']
@@ -29,4 +30,8 @@ class CommentSerializer(ModelSerializer):
             'parent_comment' : {'read_only' : True},
             'post' : {'read_only' : True}
         }
+
+    def get_sub_comments(self, obj):
+        children = obj.sub_comments.all()
+        return CommentSerializer(children, many=True).data
 
