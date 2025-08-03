@@ -41,7 +41,7 @@ class Comment(models.Model):
 
 
 
-class Likes(models.Model):
+class Like(models.Model):
     user = models.ForeignKey(User,related_name='likes',on_delete=models.CASCADE)
     post = models.ForeignKey(Post,related_name='likes',on_delete=models.CASCADE)
     time_stamp = models.DateTimeField(auto_now_add=True)
