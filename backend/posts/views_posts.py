@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework.generics import GenericAPIView,ListCreateAPIView,RetrieveUpdateDestroyAPIView
 from rest_framework.decorators import permission_classes,api_view
 from rest_framework.views import APIView
-from .srializers import PostSerializer
+from .serializers import PostSerializer
 from .models import Post
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from django.shortcuts import get_object_or_404

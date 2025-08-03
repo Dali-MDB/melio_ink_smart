@@ -34,9 +34,9 @@ class Post(models.Model):
 class Comment(models.Model):
     owner = models.ForeignKey(User,related_name='comments',on_delete=models.CASCADE)
     post = models.ForeignKey(Post,related_name='comments',on_delete=models.CASCADE)
-    context = models.TextField()
+    content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    sub_comments = models.ForeignKey('self',related_name='parent_comment',on_delete=models.CASCADE)
+    parent_comment = models.ForeignKey('self',related_name='sub_comments',on_delete=models.CASCADE,null=True,blank=True)
 
 
 
