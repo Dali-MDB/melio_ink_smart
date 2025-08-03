@@ -1,12 +1,15 @@
 from django.shortcuts import render
 from rest_framework.generics import GenericAPIView,ListCreateAPIView,RetrieveUpdateDestroyAPIView
 from rest_framework.decorators import permission_classes,api_view
+from rest_framework.views import APIView
 from .srializers import PostSerializer
 from .models import Post
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
+from django.http import FileResponse
 from .permissions import PostPermission
+from rest_framework import status
 
 
 
@@ -37,13 +40,33 @@ class PostRetrieveUpdateDelete(RetrieveUpdateDestroyAPIView):
     
 
 
-@api_view(['POST'])
-def upload_post_photo(request,post_id:int):
-    post = get_object_or_404(Post,id=post_id)
-    image = request.FILES.get('image')
-    post.image = image
-    post.save()
-    return Response('the image hass been uploaded successfullt',status=201)
+
+class PostImage(APIView):
+    def get(self,request,post_id):
+        post = get_object_or_404(Post,id=post_id)
+        if post.image:
+            return FileResponse(post.image,as_attachment=False)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    def post(self,request,post_id):
+        post = get_object_or_404(Post,id=post_id)
+        if post.image:
+            post.image.delete()
+            post.save()
+        image = request.FILES.get('image')
+        post.image = image
+        post.save()
+        return Response('the image hass been uploaded successfully',status=201)
+
+
+    def delete(self,request,post_id):
+        post = get_object_or_404(Post,id=post_id)
+        if post.image:
+            post.image.delete()
+            post.save()
+        return Response('the image hass been deleted successfully',status=201)
+
+
 
 
 
