@@ -2,6 +2,8 @@ from rest_framework.serializers import Serializer,ModelSerializer
 from rest_framework import serializers
 from .models import Post,Comment,Tag
 from users.serializers import UserSerializer
+from drf_spectacular.utils import extend_schema_field
+from typing import List, Dict, Any
 
 class PostSerializer(ModelSerializer):
     class Meta:
@@ -31,6 +33,7 @@ class CommentSerializer(ModelSerializer):
             'post' : {'read_only' : True}
         }
 
+    @extend_schema_field(List[Dict[str, Any]])
     def get_sub_comments(self, obj):
         children = obj.sub_comments.all().order_by('-created_at')
         return CommentSerializer(children, many=True).data

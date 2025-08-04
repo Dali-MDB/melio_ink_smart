@@ -10,6 +10,8 @@ from rest_framework.response import Response
 from django.http import FileResponse
 from .permissions import PostPermission
 from rest_framework import status
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
+from drf_spectacular.types import OpenApiTypes
 
 
 
@@ -41,6 +43,88 @@ class PostRetrieveUpdateDelete(RetrieveUpdateDestroyAPIView):
 
 
 
+@extend_schema(
+    tags=['Posts'],
+    summary='Manage post image',
+    description='Get, upload, or delete the image associated with a specific post.',
+    methods=['GET'],
+    responses={
+        200: OpenApiResponse(
+            description='Post image file',
+            response=OpenApiTypes.BINARY
+        ),
+        204: OpenApiResponse(
+            description='No image found for this post'
+        )
+    },
+    parameters=[
+        OpenApiParameter(
+            name='post_id',
+            location=OpenApiParameter.PATH,
+            description='ID of the post',
+            required=True,
+            type=int
+        )
+    ]
+)
+@extend_schema(
+    tags=['Posts'],
+    summary='Upload post image',
+    description='Upload an image for a specific post. If an image already exists, it will be replaced.',
+    methods=['POST'],
+    request={
+        'multipart/form-data': {
+            'type': 'object',
+            'properties': {
+                'image': {
+                    'type': 'string',
+                    'format': 'binary',
+                    'description': 'Image file to upload'
+                }
+            }
+        }
+    },
+    responses={
+        201: {
+            'type': 'object',
+            'properties': {
+                'detail': {'type': 'string', 'example': 'the image has been uploaded successfully'}
+            }
+        }
+    },
+    parameters=[
+        OpenApiParameter(
+            name='post_id',
+            location=OpenApiParameter.PATH,
+            description='ID of the post',
+            required=True,
+            type=int
+        )
+    ]
+)
+@extend_schema(
+    tags=['Posts'],
+    summary='Delete post image',
+    description='Delete the image associated with a specific post.',
+    methods=['DELETE'],
+    responses={
+        201: {
+            'type': 'object',
+            'properties': {
+                'detail': {'type': 'string', 'example': 'the image has been deleted successfully'}
+            }
+        }
+    },
+    parameters=[
+        OpenApiParameter(
+            name='post_id',
+            location=OpenApiParameter.PATH,
+            description='ID of the post',
+            required=True,
+            type=int
+        )
+    ]
+)
 class PostImage(APIView):
     permission_classes = [PostPermission]
     
@@ -60,7 +144,7 @@ class PostImage(APIView):
         image = request.FILES.get('image')
         post.image = image
         post.save()
-        return Response('the image hass been uploaded successfully',status=201)
+        return Response('the image has been uploaded successfully',status=201)
 
 
     def delete(self,request,post_id):
@@ -69,7 +153,7 @@ class PostImage(APIView):
         if post.image:
             post.image.delete()
             post.save()
-        return Response('the image hass been deleted successfully',status=201)
+        return Response('the image has been deleted successfully',status=201)
 
 
 
