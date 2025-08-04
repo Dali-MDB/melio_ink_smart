@@ -2,7 +2,7 @@ from django.urls import path,include
 from .views_posts import PostsListCreate,PostRetrieveUpdateDelete,PostImage
 from .views_likes import like_post,get_all_likes
 from .views_comments import CommentListCreate,CommentRetrieveUpdateDelete
-from .views_tags import TagsListCreate,TagsViewUpdateDelete
+from .views_tags import TagsListCreate,TagsViewUpdateDelete,tagsBulkCreate
 
 
 urlpatterns = [
@@ -18,4 +18,5 @@ urlpatterns = [
 
    path('tags/',TagsListCreate.as_view()),
    path('tags/<int:id>/',TagsViewUpdateDelete.as_view()),
+   path('tags/bulk/',tagsBulkCreate)
 ]
