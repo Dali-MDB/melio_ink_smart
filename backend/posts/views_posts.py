@@ -12,12 +12,16 @@ from .permissions import PostPermission
 from rest_framework import status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 from drf_spectacular.types import OpenApiTypes
+from django_filters.rest_framework import DjangoFilterBackend
+from .filters import PostFilter
 
 
 
 class PostsListCreate(ListCreateAPIView):
     serializer_class = PostSerializer
     queryset = Post.objects.all().order_by('-created_at')
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = PostFilter
 
     def perform_create(self, serializer):
         serializer.save(owner = self.request.user)

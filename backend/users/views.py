@@ -9,6 +9,8 @@ from posts.serializers import PostSerializer
 from posts.models import Post
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 from rest_framework import status
+from posts.filters import PostFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 
 @extend_schema(
@@ -105,6 +107,8 @@ def view_profile(request,user_id):
 )
 class ListUserPosts(ListAPIView):
     serializer_class = PostSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = PostFilter
 
     def get_queryset(self):
         user_id = self.kwargs.get('user_id')
