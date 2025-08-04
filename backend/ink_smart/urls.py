@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path,include
+from django.urls import path,include,re_path
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -20,3 +20,16 @@ urlpatterns = [
     path('docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]+static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+@api_view(['GET','POST','PUT','PATCH','DELETE'])
+def path_not_found(request, *args, **kwargs):
+    return Response({
+        "detail": "This endpoint does not exist.",
+        "path": request.path
+    }, status=404)
+
+
+
+urlpatterns += [re_path(r"^(?P<path>.*)$",path_not_found )]

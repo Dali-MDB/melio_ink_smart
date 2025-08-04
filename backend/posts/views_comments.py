@@ -4,12 +4,17 @@ from .permissions import PostPermission
 from .serializers import CommentSerializer
 from django.shortcuts import get_object_or_404
 from .models import Post,Comment
+from rest_framework.throttling import UserRateThrottle
 
 
 class CommentListCreate(ListCreateAPIView):
     permission_classes = [PostPermission]
     serializer_class = CommentSerializer
-    
+    def get_throttles(self):
+        if self.request.method=='POST':
+            return [UserRateThrottle()]
+        else:
+            return []
 
     #for the permission class
     def get_object(self):
