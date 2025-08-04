@@ -15,7 +15,7 @@ from rest_framework import status
 
 class PostsListCreate(ListCreateAPIView):
     serializer_class = PostSerializer
-    queryset = Post.objects.all()
+    queryset = Post.objects.all().order_by('-created_at')
 
     def perform_create(self, serializer):
         serializer.save(owner = self.request.user)
@@ -30,7 +30,7 @@ class PostsListCreate(ListCreateAPIView):
 class PostRetrieveUpdateDelete(RetrieveUpdateDestroyAPIView):
     lookup_field = 'post_id'
     serializer_class = PostSerializer
-    queryset = Post.objects.all()
+    queryset = Post.objects.all().order_by('-created_at')
     permission_classes = [PostPermission]
 
     

@@ -43,8 +43,17 @@ class ListUserPosts(ListAPIView):
     def get_queryset(self):
         user_id = self.kwargs.get('user_id')
         user = get_object_or_404(User,id=user_id)
-        posts = Post.objects.filter(owner=user)
+        posts = Post.objects.filter(owner=user).order_by('created_at')
         return posts
+
+
+@api_view(['GET'])
+def current_user_info(request):
+    return Response({
+        'is_auth' : request.user.is_authenticated if request.user else None,
+        'id' :  request.user.id if request.user else None,
+    })
+
 
 
 

@@ -32,7 +32,7 @@ class CommentSerializer(ModelSerializer):
         }
 
     def get_sub_comments(self, obj):
-        children = obj.sub_comments.all()
+        children = obj.sub_comments.all().order_by('-created_at')
         return CommentSerializer(children, many=True).data
 
 

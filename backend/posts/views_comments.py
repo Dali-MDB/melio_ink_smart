@@ -35,13 +35,13 @@ class CommentListCreate(ListCreateAPIView):
 
     def get_queryset(self):
         post = self.get_object()
-        return Comment.objects.filter(post=post)
+        return Comment.objects.filter(post=post).order_by('-created_at')
 
 
 class CommentRetrieveUpdateDelete(RetrieveUpdateDestroyAPIView):
     lookup_field = 'comment_id'
     serializer_class = CommentSerializer
-    queryset = Comment.objects.all()
+    queryset = Comment.objects.all().order_by('-created_at')
     permission_classes = [PostPermission]
 
     def get_object(self):
