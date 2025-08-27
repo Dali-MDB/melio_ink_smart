@@ -6,12 +6,13 @@ class BlogMiddleWare:
         self.get_response = get_response
 
     def __call__(self, request):
-        respone = self.get_response(request)
+        response = self.get_response(request)
         path = request.path
-        if request.status == 200 and request.method == 'GET' and self.verify_path(path):
-            post_id = request.resolver_match.kwargs.get("pk")
+        if response.status_code == 200 and request.method == 'GET' and self.verify_path(path):
+            
+            post_id = request.resolver_match.kwargs.get("post_id")
             if  post_id:
-                post = Post.objects.filter(pk=post_id).first()
+                post = Post.objects.filter(id=post_id).first()
                 if post:
                     PostView.objects.create( 
                         post=post,
@@ -21,7 +22,7 @@ class BlogMiddleWare:
                         referrer=request.META.get("HTTP_REFERER", ""),
                     )
 
-        return respone  #gg
+        return response  #gg
 
 
 
@@ -31,7 +32,7 @@ class BlogMiddleWare:
             return x_forwarded_for.split(",")[0]
         return request.META.get("REMOTE_ADDR")
     
-    def verify_path(path:str)->bool:
+    def verify_path(self,path:str)->bool:
         idk = re.search(r'/posts/(\d+)/$',path)
         return True if idk else False
         

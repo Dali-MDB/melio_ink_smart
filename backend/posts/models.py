@@ -15,7 +15,7 @@ class Post(models.Model):
     title = models.CharField(max_length=256)
     content = models.TextField()
     image = models.ImageField(upload_to='post_images',null=True,blank=True)
-    tags = models.ManyToManyField(Tag,related_name='posts',null=True,blank=True)
+    tags = models.ManyToManyField(Tag,related_name='posts')
     summary = models.TextField(null=True,blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     STATUS_CHOICES = [
