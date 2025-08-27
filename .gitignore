@@ -1,0 +1,6 @@
+blog/
+backend/.env
+backend/.env:1
+*.env
+frontend/
+**/*.env
