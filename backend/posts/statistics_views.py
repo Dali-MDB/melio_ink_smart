@@ -8,13 +8,13 @@ from django.db.models.functions import ExtractYear, ExtractMonth
 
 
 @api_view(['GET'])
-#@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated])
 def get_post_statistics(request,post_id:int):
     post = get_object_or_404(Post,id=post_id)
-    # if not post.owner == request.user:
-    #     return Response('you can not get statistics for a post you do not own',403)
-    # if post.status != 'PUBLISHED':
-    #     return Response('this post has not been published yet',400)
+    if not post.owner == request.user:
+        return Response('you can not get statistics for a post you do not own',403)
+    if post.status != 'PUBLISHED':
+        return Response('this post has not been published yet',400)
     
     monthly_views = PostView.objects.filter(post_id=post_id).annotate(
         year=ExtractYear('timestamp'),
