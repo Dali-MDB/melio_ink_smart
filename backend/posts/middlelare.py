@@ -21,7 +21,7 @@ class BlogMiddleWare:
                         referrer=request.META.get("HTTP_REFERER", ""),
                     )
 
-        return respone  #g
+        return respone  #gg
 
 
 
