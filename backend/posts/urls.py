@@ -3,6 +3,7 @@ from .views_posts import PostsListCreate,PostRetrieveUpdateDelete,PostImage, sav
 from .views_likes import like_post,get_all_likes
 from .views_comments import CommentListCreate,CommentRetrieveUpdateDelete
 from .views_tags import TagsListCreate,TagsViewUpdateDelete,tagsBulkCreate
+from .statistics_views import get_post_statistics
 
 
 urlpatterns = [
@@ -21,5 +22,7 @@ urlpatterns = [
 
    path('tags/',TagsListCreate.as_view()),
    path('tags/<int:id>/',TagsViewUpdateDelete.as_view()),
-   path('tags/bulk/',tagsBulkCreate)
+   path('tags/bulk/',tagsBulkCreate),
+
+   path('statistics/post_stats/<int:post_id>/',get_post_statistics),
 ]
