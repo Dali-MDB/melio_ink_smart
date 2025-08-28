@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import { Heart, MessageCircle, Bookmark, User } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { apiClient } from '../lib/api'
+import { transformPost } from '../lib/utils'
 
 export default function PostCard({
   id,
@@ -18,16 +20,72 @@ export default function PostCard({
   const [liked, setLiked] = useState(isLiked)
   const [bookmarked, setBookmarked] = useState(isBookmarked)
   const [likeCount, setLikeCount] = useState(likes)
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleLike = (e) => {
+  // Sync state with props when they change
+  useEffect(() => {
+    console.log('PostCard isLiked prop changed:', isLiked)
+    setLiked(isLiked)
+  }, [isLiked])
+
+  useEffect(() => {
+    console.log('PostCard isBookmarked prop changed:', isBookmarked)
+    setBookmarked(isBookmarked)
+  }, [isBookmarked])
+
+  useEffect(() => {
+    console.log('PostCard likes prop changed:', likes)
+    setLikeCount(likes)
+  }, [likes])
+
+  const handleLike = async (e) => {
     e.preventDefault()
-    setLiked(!liked)
-    setLikeCount(prev => liked ? prev - 1 : prev + 1)
+    e.stopPropagation()
+    
+    if (isLoading) return
+    
+    setIsLoading(true)
+    try {
+      await apiClient.likePost(id)
+      
+      // Refresh post data to get updated like status and count
+      const postData = await apiClient.getPost(id)
+      const transformedPost = transformPost(postData)
+      
+      setLiked(transformedPost.isLiked)
+      setLikeCount(transformedPost.likes)
+    } catch (error) {
+      console.error('Failed to like post:', error)
+      // Revert the optimistic update
+      setLiked(liked)
+      setLikeCount(likes)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleBookmark = (e) => {
+  const handleBookmark = async (e) => {
     e.preventDefault()
-    setBookmarked(!bookmarked)
+    e.stopPropagation()
+    
+    if (isLoading) return
+    
+    setIsLoading(true)
+    try {
+      await apiClient.savePost(id)
+      
+      // Refresh post data to get updated bookmark status
+      const postData = await apiClient.getPost(id)
+      const transformedPost = transformPost(postData)
+      
+      setBookmarked(transformedPost.isBookmarked)
+    } catch (error) {
+      console.error('Failed to bookmark post:', error)
+      // Revert the optimistic update
+      setBookmarked(bookmarked)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -92,9 +150,10 @@ export default function PostCard({
             <div className="flex items-center space-x-4">
               <button 
                 onClick={handleLike}
+                disabled={isLoading}
                 className={`flex items-center space-x-1 transition-colors ${
                   liked ? 'text-red-500' : 'text-blog-gray/60 hover:text-red-500'
-                }`}
+                } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Heart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} />
                 <span className="text-sm">{likeCount}</span>
@@ -108,9 +167,10 @@ export default function PostCard({
 
             <button 
               onClick={handleBookmark}
+              disabled={isLoading}
               className={`transition-colors ${
                 bookmarked ? 'text-blog-sage' : 'text-blog-gray/60 hover:text-blog-sage'
-              }`}
+              } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Bookmark className={`w-4 h-4 ${bookmarked ? 'fill-current' : ''}`} />
             </button>

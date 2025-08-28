@@ -1,9 +1,9 @@
 from django.urls import path,include
 from .views_posts import PostsListCreate,PostRetrieveUpdateDelete,PostImage, save_post, get_saved_posts, publish_draft
 from .views_likes import like_post,get_all_likes
-from .views_comments import CommentListCreate,CommentRetrieveUpdateDelete
+from .views_comments import CommentListCreate,CommentRetrieveUpdateDelete,UserComments
 from .views_tags import TagsListCreate,TagsViewUpdateDelete,tagsBulkCreate
-from .statistics_views import get_post_statistics
+#from .statistics_views import get_post_statistics
 
 
 urlpatterns = [
@@ -19,10 +19,11 @@ urlpatterns = [
 
    path('<int:post_id>/comments/',CommentListCreate.as_view()),
    path('<int:post_id>/comments/<int:comment_id>/',CommentRetrieveUpdateDelete.as_view()),
-
+   
+   path('user_comments/',UserComments.as_view()),
    path('tags/',TagsListCreate.as_view()),
    path('tags/<int:id>/',TagsViewUpdateDelete.as_view()),
    path('tags/bulk/',tagsBulkCreate),
 
-   path('statistics/post_stats/<int:post_id>/',get_post_statistics),
+  # path('statistics/post_stats/<int:post_id>/',get_post_statistics),
 ]

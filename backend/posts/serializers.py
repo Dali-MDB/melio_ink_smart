@@ -6,19 +6,20 @@ from drf_spectacular.utils import extend_schema_field
 from typing import List, Dict, Any
 
 class PostSerializer(ModelSerializer):
+    owner = UserSerializer(read_only=True)
     is_liked = serializers.SerializerMethodField()
     is_saved = serializers.SerializerMethodField()
+    likes_count = serializers.ReadOnlyField()
+    comments_count = serializers.ReadOnlyField()
     
     class Meta:
         model = Post
-        fields = ['id','owner','title','content','image','tags','summary','created_at','status','is_liked','is_saved']
+        fields = ['id','owner','title','content','image','tags','summary','created_at','status','is_liked','is_saved','likes_count','comments_count']
         extra_kwargs = {
-            'owner' : {'read_only' : True},
             'created_at' : {'read_only' : True},
             'image' : {'read_only' : True},
             'summary' : {'read_only' : True},
             'status' : {'read_only' : True}
-
         }
 
 

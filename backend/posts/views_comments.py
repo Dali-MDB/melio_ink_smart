@@ -1,12 +1,12 @@
 from rest_framework.decorators import api_view
-from rest_framework.generics import ListCreateAPIView,RetrieveUpdateDestroyAPIView
+from rest_framework.generics import ListCreateAPIView,RetrieveUpdateDestroyAPIView,ListAPIView
 from .permissions import PostPermission
 from .serializers import CommentSerializer
 from django.shortcuts import get_object_or_404
 from .models import Post,Comment
 from rest_framework.throttling import UserRateThrottle
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
-
+from rest_framework.permissions import IsAuthenticated
 
 @extend_schema(
     tags=['Comments'],
@@ -203,3 +203,14 @@ class CommentRetrieveUpdateDelete(RetrieveUpdateDestroyAPIView):
     def get_object(self):
         comment_id = self.kwargs.get('comment_id')
         return get_object_or_404(Comment, id=comment_id)
+
+
+
+
+#fetch all comments of a user
+class UserComments(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CommentSerializer
+    def get_queryset(self):
+        user = self.request.user
+        return Comment.objects.filter(owner=user).order_by('-created_at')
