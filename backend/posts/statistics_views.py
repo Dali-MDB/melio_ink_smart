@@ -7,73 +7,98 @@ from django.db.models import Count
 from django.db.models.functions import ExtractYear, ExtractMonth
 
 
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def get_post_statistics(request,post_id:int):
-    post = get_object_or_404(Post,id=post_id)
-    if not post.owner == request.user:
-        return Response('you can not get statistics for a post you do not own',403)
-    if post.status != 'PUBLISHED':
-        return Response('this post has not been published yet',400)
+def get_user_statistics(request):
+    # Get all published posts owned by the user
+    user_posts = Post.objects.filter(owner=request.user, status='PUBLISHED')
     
-    monthly_views = PostView.objects.filter(post_id=post_id).annotate(
+    # Get post IDs for filtering
+    post_ids = user_posts.values_list('id', flat=True)
+    
+    # Get monthly views for all user's posts
+    monthly_views = PostView.objects.filter(post_id__in=post_ids).annotate(
         year=ExtractYear('timestamp'),
         month=ExtractMonth('timestamp')
     ).values('year', 'month').annotate(
         view_count=Count('id')
     ).order_by('year', 'month')
 
-    monthly_comments = Comment.objects.filter(post_id=post_id).annotate(
+    # Get monthly comments for all user's posts
+    monthly_comments = Comment.objects.filter(post_id__in=post_ids).annotate(
         year=ExtractYear('created_at'),
         month=ExtractMonth('created_at')
     ).values('year', 'month').annotate(
         comment_count=Count('id')
     ).order_by('year', 'month')
 
-    monthly_likes = Like.objects.filter(post_id=post_id).annotate(
+    # Get monthly likes for all user's posts
+    monthly_likes = Like.objects.filter(post_id__in=post_ids).annotate(
         year=ExtractYear('time_stamp'),
         month=ExtractMonth('time_stamp')
     ).values('year', 'month').annotate(
         like_count=Count('id')
     ).order_by('year', 'month')
 
+    # Combine the data
     result = {}
     for item in monthly_views:
-        index = str(item['year'])+'-'+str(item['month'])
-        if not index in result:
+        index = f"{item['year']}-{item['month']:02d}"
+        if index not in result:
             result[index] = {
                 "views": 0,
                 "comments": 0,
-                "likes" : 0
+                "likes": 0
             }
-        inst = result[index]
-        inst['views'] = item['view_count']
+        result[index]['views'] = item['view_count']
     
     for item in monthly_likes:
-        index = str(item['year'])+'-'+str(item['month'])
-        if not index in result:
+        index = f"{item['year']}-{item['month']:02d}"
+        if index not in result:
             result[index] = {
                 "views": 0,
                 "comments": 0,
-                "likes" : 0
+                "likes": 0
             }
-        inst = result[index]
-        inst['likes'] = item['like_count']
+        result[index]['likes'] = item['like_count']
 
     for item in monthly_comments:
-        index = str(item['year'])+'-'+str(item['month'])
-        if not index in result:
+        index = f"{item['year']}-{item['month']:02d}"
+        if index not in result:
             result[index] = {
                 "views": 0,
                 "comments": 0,
-                "likes" : 0
+                "likes": 0
             }
-        inst = result[index]
-        inst['comments'] = item['comment_count']
+        result[index]['comments'] = item['comment_count']
+    
+    # Calculate additional statistics
+    total_posts = user_posts.count()
+    total_views = sum(item['view_count'] for item in monthly_views)
+    total_likes = sum(item['like_count'] for item in monthly_likes)
+    total_comments = sum(item['comment_count'] for item in monthly_comments)
+    
+    # Calculate averages per post
+    avg_views_per_post = total_views / total_posts if total_posts > 0 else 0
+    avg_likes_per_post = total_likes / total_posts if total_posts > 0 else 0
+    avg_comments_per_post = total_comments / total_posts if total_posts > 0 else 0
     
     return Response({
-        'detailed_stats':result,
-        'total_views' : sum(item['view_count'] for item in monthly_views),
-        'total_likes': sum(item['like_count'] for item in monthly_likes),
-        'total_comments': sum(item['comment_count'] for item in monthly_comments),
+        'user_id': request.user.id,
+        'username': request.user.username,
+        'total_posts': total_posts,
+        'detailed_stats': result,
+        'totals': {
+            'views': total_views,
+            'likes': total_likes,
+            'comments': total_comments
+        },
+        'averages': {
+            'views_per_post': round(avg_views_per_post, 2),
+            'likes_per_post': round(avg_likes_per_post, 2),
+            'comments_per_post': round(avg_comments_per_post, 2)
+        },
+        'time_periods': len(result)
     })
