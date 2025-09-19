@@ -133,7 +133,6 @@ def get_access_token(request):
     - 400: {"detail": "no refresh token was provided"}
     - 408: {"detail": "the refresh token has been expired, please login again"}
     """
-def get_access_token(request):
     refresh_token = request.data.get('refresh',None)
     if not refresh_token:
         return Response('no refresh token was provided',400)
