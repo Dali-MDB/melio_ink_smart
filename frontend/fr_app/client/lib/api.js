@@ -1,4 +1,5 @@
 const API_BASE_URL = 'http://localhost:8000'
+export { API_BASE_URL }
 
 class ApiClient {
   constructor() {
@@ -85,10 +86,58 @@ class ApiClient {
     })
   }
 
+  async getCurrentUserProfile() {
+    return this.request('/users/profile/me/', {
+      method: 'GET',
+    })
+  }
+
   async updateProfile(profileData) {
     return this.request('/users/profile/me/', {
       method: 'PUT',
       body: JSON.stringify(profileData),
+    })
+  }
+
+  // Profile picture methods
+  async uploadProfilePicture(file) {
+    console.log('API: Uploading profile picture to:', `${this.baseURL}/users/profile/upload_pfp/`)
+    console.log('API: File:', file)
+    
+    const formData = new FormData()
+    formData.append('pfp', file)
+    
+    const url = `${this.baseURL}/users/profile/upload_pfp/`
+    const token = localStorage.getItem('access_token')
+    
+    console.log('API: Token exists:', !!token)
+    console.log('API: FormData contents:', Array.from(formData.entries()))
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData
+    })
+    
+    console.log('API: Response status:', response.status)
+    console.log('API: Response headers:', Object.fromEntries(response.headers.entries()))
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('API: Upload error:', errorData)
+      throw new Error(errorData.detail || errorData.error || `HTTP error! status: ${response.status}`)
+    }
+    
+    const result = await response.json()
+    console.log('API: Upload success:', result)
+    return result
+  }
+
+  async removeProfilePicture() {
+    return this.request('/users/profile/remove_pfp/', {
+      method: 'DELETE',
     })
   }
 
@@ -154,6 +203,12 @@ class ApiClient {
     })
   }
 
+  async publishDraft(postId) {
+    return this.request(`/posts/${postId}/publish/`, {
+      method: 'POST',
+    })
+  }
+
   // Likes methods
   async likePost(postId) {
     return this.request(`/posts/${postId}/like/`, {
@@ -201,6 +256,12 @@ class ApiClient {
     })
   }
 
+  async getComment(postId, commentId) {
+    return this.request(`/posts/${postId}/comments/${commentId}/`, {
+      method: 'GET',
+    })
+  }
+
   async createComment(postId, commentData, parentCommentId = null) {
     const url = parentCommentId 
       ? `/posts/${postId}/comments/?parent_comment_id=${parentCommentId}`
@@ -222,6 +283,20 @@ class ApiClient {
   async deleteComment(postId, commentId) {
     return this.request(`/posts/${postId}/comments/${commentId}/`, {
       method: 'DELETE',
+    })
+  }
+
+  // Comment likes methods
+  async likeComment(postId, commentId) {
+    return this.request(`/posts/${postId}/comments/${commentId}/like/`, {
+      method: 'POST',
+    })
+  }
+
+  // Get user comments
+  async getUserComments() {
+    return this.request('/posts/user_comments/', {
+      method: 'GET',
     })
   }
 }

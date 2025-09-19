@@ -1,8 +1,9 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Heart, MessageCircle, Bookmark, User } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { apiClient } from '../lib/api'
 import { transformPost } from '../lib/utils'
+import { useAuth } from '../context/AuthContext'
 
 export default function PostCard({
   id,
@@ -15,8 +16,11 @@ export default function PostCard({
   comments,
   isLiked = false,
   isBookmarked = false,
-  publishedAt
+  publishedAt,
+  onBookmarkChange
 }) {
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const [liked, setLiked] = useState(isLiked)
   const [bookmarked, setBookmarked] = useState(isBookmarked)
   const [likeCount, setLikeCount] = useState(likes)
@@ -42,23 +46,54 @@ export default function PostCard({
     e.preventDefault()
     e.stopPropagation()
     
-    if (isLoading) return
+    if (!user) {
+      navigate('/login')
+      return
+    }
     
+    console.log('Like button clicked. Current state:', { liked, likeCount, isLoading })
+    
+    if (isLoading) {
+      console.log('Action prevented: Already processing like')
+      return
+    }
+    
+    // Optimistic update
+    const wasLiked = liked
+    const previousLikes = likeCount
+    const newLikedState = !wasLiked
+    const newLikeCount = wasLiked ? likeCount - 1 : likeCount + 1
+    
+    console.log('Updating UI optimistically:', { 
+      from: { liked, likeCount },
+      to: { liked: newLikedState, likeCount: newLikeCount }
+    })
+    
+    setLiked(newLikedState)
+    setLikeCount(newLikeCount)
     setIsLoading(true)
+    
     try {
+      // Toggle like
       await apiClient.likePost(id)
       
-      // Refresh post data to get updated like status and count
+      // Verify the server state matches our optimistic update
       const postData = await apiClient.getPost(id)
       const transformedPost = transformPost(postData)
       
-      setLiked(transformedPost.isLiked)
-      setLikeCount(transformedPost.likes)
+      // Only update if server state is different from our optimistic update
+      if (transformedPost.isLiked !== !wasLiked || transformedPost.likes !== (wasLiked ? previousLikes - 1 : previousLikes + 1)) {
+        setLiked(transformedPost.isLiked)
+        setLikeCount(transformedPost.likes)
+      }
     } catch (error) {
       console.error('Failed to like post:', error)
-      // Revert the optimistic update
-      setLiked(liked)
-      setLikeCount(likes)
+      // Revert optimistic update on error
+      setLiked(wasLiked)
+      setLikeCount(previousLikes)
+      
+      // Show error to user (you might want to use a toast notification here)
+      alert('Failed to update like. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -68,26 +103,48 @@ export default function PostCard({
     e.preventDefault()
     e.stopPropagation()
     
+    if (!user) {
+      navigate('/login')
+      return
+    }
+    
     if (isLoading) return
     
+    // Optimistic update
+    const wasBookmarked = bookmarked
+    setBookmarked(!wasBookmarked)
     setIsLoading(true)
+    
     try {
       await apiClient.savePost(id)
       
-      // Refresh post data to get updated bookmark status
+      // Verify the server state
       const postData = await apiClient.getPost(id)
       const transformedPost = transformPost(postData)
       
-      setBookmarked(transformedPost.isBookmarked)
+      // Only update if server state is different from our optimistic update
+      if (transformedPost.isBookmarked !== !wasBookmarked) {
+        setBookmarked(transformedPost.isBookmarked)
+      }
+
+      // Notify parent lists (e.g., Bookmarks page) to refresh
+      if (typeof onBookmarkChange === 'function') {
+        onBookmarkChange()
+      }
     } catch (error) {
       console.error('Failed to bookmark post:', error)
-      // Revert the optimistic update
-      setBookmarked(bookmarked)
+      // Revert optimistic update on error
+      setBookmarked(wasBookmarked)
+      
+      // Show error to user
+      alert('Failed to update bookmark. Please try again.')
     } finally {
       setIsLoading(false)
     }
   }
 
+  console.log('Rendering PostCard:', { id, liked, likeCount, isLiked, likes })
+  
   return (
     <Link to={`/post/${id}`} className="group">
       <article className="bg-white/60 dark:bg-white/5 backdrop-blur-sm rounded-xl overflow-hidden border border-blog-gray/10 dark:border-white/10 hover:border-blog-green/30 hover:shadow-lg transition-all duration-300">
@@ -155,8 +212,17 @@ export default function PostCard({
                   liked ? 'text-red-500' : 'text-blog-gray/60 hover:text-red-500'
                 } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <Heart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} />
-                <span className="text-sm">{likeCount}</span>
+                <Heart 
+                  className="w-4 h-4"
+                  fill={liked ? 'currentColor' : 'none'}
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  data-testid={`heart-icon-${id}`}
+                  data-liked={liked}
+                />
+                <span className="text-sm">
+                  {likeCount}
+                </span>
               </button>
               
               <div className="flex items-center space-x-1 text-blog-gray/60">

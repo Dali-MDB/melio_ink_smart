@@ -62,7 +62,7 @@ export function transformPost(post) {
     summary: summary,
     author: {
       name: authorName,
-      avatar: owner.profile?.avatar || null
+      avatar: owner.avatar || null
     },
     featuredImage: post.image || null,
     tags: tags,
@@ -110,4 +110,23 @@ export function filterPostsBySearch(posts, searchQuery) {
 export function filterPostsByTag(posts, selectedTag) {
   if (!selectedTag || selectedTag === 'All') return posts
   return posts.filter(post => post.tags.includes(selectedTag))
+}
+
+
+// Simplified cn utility for environments without clsx/tailwind-merge
+export function cn(...inputs) {
+  return inputs
+    .filter(Boolean)
+    .map(input => {
+      if (typeof input === 'string') return input;
+      if (typeof input === 'object' && input !== null) {
+        return Object.entries(input)
+          .filter(([_, value]) => Boolean(value))
+          .map(([key]) => key)
+          .join(' ');
+      }
+      return '';
+    })
+    .join(' ')
+    .trim();
 }

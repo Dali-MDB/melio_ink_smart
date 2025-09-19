@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { PenTool, Save, Eye, X, Plus, Hash } from 'lucide-react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import { apiClient } from '../lib/api'
+import { useNavigate } from 'react-router-dom'
 
 const SUGGESTED_TAGS = [
   'Writing', 'Technology', 'Life Lessons', 'Productivity', 'Mental Health',
@@ -10,6 +12,7 @@ const SUGGESTED_TAGS = [
 ]
 
 export default function CreatePost() {
+  const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [summary, setSummary] = useState('')
@@ -18,6 +21,7 @@ export default function CreatePost() {
   const [isPreview, setIsPreview] = useState(false)
   const [isDraft, setIsDraft] = useState(true)
   const [showTagSuggestions, setShowTagSuggestions] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   const handleAddTag = (tag) => {
     if (tag && !tags.includes(tag) && tags.length < 5) {
@@ -38,8 +42,46 @@ export default function CreatePost() {
     }
   }
 
-  const handleSave = (saveAsDraft = true) => {
-    console.log('Saving post:', { title, content, summary, tags, isDraft: saveAsDraft })
+  const handleSave = async (saveAsDraft = true) => {
+    if (!title.trim() || !content.trim()) {
+      alert('Please add a title and content before saving.')
+      return
+    }
+    setSaving(true)
+    try {
+      const payload = {
+        title: title.trim(),
+        content: content.trim(),
+        summary: summary.trim() || undefined,
+        tags: tags.map(name => ({ name })),
+        status: saveAsDraft ? 'DRAFT' : 'PUBLISHED'
+      }
+
+      // Create post (backend sets owner, ignores status if needed)
+      const created = await apiClient.createPost(payload)
+
+      // If publishing now and backend requires explicit publish, call publish
+      let finalPost = created
+      if (!saveAsDraft && created?.id) {
+        try {
+          finalPost = await apiClient.publishDraft(created.id)
+        } catch (_) {
+          // ignore if not needed
+        }
+      }
+
+      // Navigate to post detail
+      if (finalPost?.id) {
+        navigate(`/post/${finalPost.id}`)
+      } else if (created?.id) {
+        navigate(`/post/${created.id}`)
+      }
+    } catch (e) {
+      console.error('Failed to save post', e)
+      alert(e.message || 'Failed to save post')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handlePublish = () => {
@@ -87,18 +129,20 @@ export default function CreatePost() {
             </button>
             
             <button
+              disabled={saving}
               onClick={() => handleSave(true)}
-              className="flex items-center space-x-2 border border-blog-green text-blog-green px-4 py-2 rounded-lg hover:bg-blog-green/5 transition-colors"
+              className={`flex items-center space-x-2 border border-blog-green text-blog-green px-4 py-2 rounded-lg hover:bg-blog-green/5 transition-colors ${saving ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
               <Save className="w-4 h-4" />
-              <span>Save Draft</span>
+              <span>{saving ? 'Saving...' : 'Save Draft'}</span>
             </button>
             
             <button
+              disabled={saving}
               onClick={handlePublish}
-              className="bg-blog-green text-white px-6 py-2 rounded-lg hover:bg-blog-green/90 transition-colors"
+              className={`bg-blog-green text-white px-6 py-2 rounded-lg hover:bg-blog-green/90 transition-colors ${saving ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
-              Publish
+              {saving ? 'Publishing...' : 'Publish'}
             </button>
           </div>
         </div>

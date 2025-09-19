@@ -30,77 +30,121 @@ export default function Index() {
     [selectedTag]
   )
 
+  // Transform posts data to a consistent format
+  const transformPosts = (postsData) => {
+    if (!postsData) return [];
+    
+    // Handle different response structures
+    let postsArray = Array.isArray(postsData) ? postsData : [];
+    
+    if (postsData && typeof postsData === 'object' && !Array.isArray(postsData)) {
+      if (postsData.results) {
+        postsArray = postsData.results;
+      } else if (postsData.data) {
+        postsArray = postsData.data;
+      } else if (postsData.posts) {
+        postsArray = postsData.posts;
+      } else {
+        postsArray = Object.values(postsData);
+      }
+    }
+    
+    return postsArray.map(post => ({
+      id: post.id || post._id,
+      title: post.title || 'Untitled',
+      summary: post.summary || post.excerpt || '',
+      content: post.content || post.body || '',
+      author: {
+        id: post.owner?.id || post.author?.id || post.author_id || null,
+        name: post.owner?.name || 
+              (post.owner?.first_name && post.owner?.last_name 
+                ? `${post.owner.first_name} ${post.owner.last_name}` 
+                : post.owner?.username || 'Anonymous'),
+        avatar: post.owner?.avatar || null
+      },
+      featuredImage: post.featured_image || post.image || post.thumbnail || null,
+      tags: post.tags || post.categories || [],
+      likes: post.likes_count || post.likes?.length || 0,
+      comments: post.comments_count || post.comments?.length || 0,
+      isLiked: post.is_liked || false,
+      isBookmarked: post.is_saved || false,
+      status: post.status || 'PUBLISHED',
+      createdAt: post.created_at || post.date_created || new Date().toISOString(),
+      updatedAt: post.updated_at || post.date_updated || new Date().toISOString()
+    }));
+  };
+
+  // Extract unique tags from posts
+  const getUniqueTags = (posts) => {
+    if (!Array.isArray(posts)) return [];
+    
+    const tagSet = new Set();
+    
+    posts.forEach(post => {
+      if (Array.isArray(post.tags)) {
+        post.tags.forEach(tag => {
+          if (tag && typeof tag === 'string') {
+            tagSet.add(tag.trim());
+          } else if (tag && typeof tag === 'object' && tag.name) {
+            tagSet.add(tag.name.trim());
+          }
+        });
+      }
+    });
+    
+    return Array.from(tagSet).filter(Boolean);
+  };
+
   // Fetch posts from backend
   const fetchPosts = async (search = '', tag = 'All') => {
     try {
-      console.log('Starting fetchPosts with:', { search, tag })
-      setSearchLoading(true)
-      setError(null)
+      setSearchLoading(true);
+      setError(null);
       
-      const params = {}
+      const params = {};
       
       // Add search parameter
       if (search.trim()) {
-        params.search = search.trim()
+        params.search = search.trim();
       }
       
       // Add tag parameter
       if (tag && tag !== 'All') {
-        params.tags = tag
+        params.tags = tag;
       }
       
-      console.log('Calling apiClient.getPosts with params:', params)
-      const postsData = await apiClient.getPosts(params)
-      console.log('Received postsData:', postsData)
+      // Add pagination parameters
+      params.page_size = 10; // Limit number of posts per page
       
-      // Handle different response structures
-      let postsArray = postsData
-      if (postsData && typeof postsData === 'object' && !Array.isArray(postsData)) {
-        // If it's an object, check for common pagination fields
-        if (postsData.results) {
-          postsArray = postsData.results
-        } else if (postsData.data) {
-          postsArray = postsData.data
-        } else if (postsData.posts) {
-          postsArray = postsData.posts
-        } else {
-          // If it's not an array, try to convert it
-          postsArray = Object.values(postsData)
-        }
-      }
+      // Make the API request
+      const response = await apiClient.getPosts(params);
       
-      console.log('Posts array after processing:', postsArray)
-      
-      const transformedPosts = transformPosts(postsArray)
-      console.log('Transformed posts:', transformedPosts)
+      // Transform the response data
+      const transformedPosts = transformPosts(response);
       
       // Filter to only show published posts
-      const publishedPosts = transformedPosts.filter(post => {
-        // Show posts that are either PUBLISHED or don't have a status (for backward compatibility)
-        return !post.status || post.status === 'PUBLISHED' || post.status === 'DRAFT'
-      })
-      console.log('Published posts:', publishedPosts)
+      const publishedPosts = transformedPosts.filter(post => 
+        !post.status || post.status === 'PUBLISHED' || post.status === 'DRAFT'
+      );
       
-      setPosts(publishedPosts)
+      setPosts(publishedPosts);
       
       // Extract unique tags (only on initial load)
       if (!search && tag === 'All') {
-        const tags = getUniqueTags(publishedPosts)
-        console.log('Unique tags:', tags)
-        setAllTags(['All', ...tags])
+        const tags = getUniqueTags(publishedPosts);
+        setAllTags(['All', ...tags]);
       }
       
+      return publishedPosts;
+      
     } catch (err) {
-      console.error('Failed to fetch posts:', err)
-      console.error('Error details:', {
-        message: err.message,
-        stack: err.stack,
-        name: err.name
-      })
-      setError('Failed to load posts. Please try again later.')
+      console.error('Failed to fetch posts:', err);
+      setError(err.message || 'Failed to load posts. Please try again later.');
+      setPosts([]); // Clear posts on error
+      return [];
     } finally {
-      setLoading(false)
-      setSearchLoading(false)
+      setSearchLoading(false);
+      setLoading(false);
     }
   }
 

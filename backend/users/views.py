@@ -7,38 +7,33 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from posts.serializers import PostSerializer
 from posts.models import Post
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 from rest_framework import status
 from posts.filters import PostFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
 
-@extend_schema(
-    tags=['Users'],
-    summary='Get current user profile',
-    description='Retrieve the profile information of the currently authenticated user.',
-    methods=['GET'],
-    responses={
-        200: ProfileSerializer
-    }
-)
-@extend_schema(
-    tags=['Users'],
-    summary='Update current user profile',
-    description='Update the profile information of the currently authenticated user.',
-    methods=['PUT'],
-    request=ProfileSerializer,
-    responses={
-        200: ProfileSerializer,
-        400: {
-            'type': 'object',
-            'properties': {
-                'field_name': {'type': 'array', 'items': {'type': 'string'}}
-            }
-        }
-    }
-)
 class MyProfileViewUpdate(APIView):
+    """
+    Get and update current user profile
+    
+    Goal: Retrieve or update the profile information of the currently authenticated user
+    Path: GET/PUT /users/profile/me/
+    Authentication: Required
+    
+    Request Body (PUT):
+    {
+        "first_name": "John",
+        "last_name": "Doe",
+        "age": 25,
+        "phone": "+1234567890",
+        "accept_notifications": true
+    }
+    
+    Response:
+    - GET 200: ProfileSerializer object
+    - PUT 200: ProfileSerializer object
+    - PUT 400: {"field_name": ["error message"]}
+    """
     permission_classes = [IsAuthenticated]
     def get(self,request):
         user = request.user
@@ -57,87 +52,160 @@ class MyProfileViewUpdate(APIView):
         return Response(prof_ser.errors,400)
 
 
-@extend_schema(
-    tags=['Users'],
-    summary='View user profile',
-    description='Retrieve the profile information of a specific user by their ID.',
-    responses={
-        200: ProfileSerializer,
-        404: {
-            'type': 'object',
-            'properties': {
-                'detail': {'type': 'string', 'example': 'Not found.'}
-            }
-        }
-    },
-    parameters=[
-        OpenApiParameter(
-            name='user_id',
-            location=OpenApiParameter.PATH,
-            description='ID of the user whose profile to view',
-            required=True,
-            type=int
-        )
-    ]
-)
 @api_view(['GET'])
 def view_profile(request,user_id):
+    """
+    View user profile
+    
+    Goal: Retrieve the profile information of a specific user by their ID
+    Path: GET /users/<int:user_id>/profile/
+    Authentication: Not required
+    
+    Request Body: None
+    
+    Response:
+    - 200: ProfileSerializer object
+    - 404: {"detail": "Not found."}
+    """
     user = get_object_or_404(User,id=user_id)
     profile = user.profile
     prof_ser = ProfileSerializer(profile)
     return Response(prof_ser.data)
 
 
-@extend_schema(
-    tags=['Users'],
-    summary='List user posts',
-    description='Retrieve all posts created by a specific user.',
-    responses={
-        200: PostSerializer(many=True)
-    },
-    parameters=[
-        OpenApiParameter(
-            name='user_id',
-            location=OpenApiParameter.PATH,
-            description='ID of the user whose posts to retrieve',
-            required=True,
-            type=int
-        )
-    ]
-)
 class ListUserPosts(ListAPIView):
+    """
+    List user posts
+    
+    Goal: Retrieve all published posts created by a specific user
+    Path: GET /users/<int:user_id>/posts/
+    Authentication: Not required
+    
+    Request Body: None
+    
+    Response:
+    - 200: [PostSerializer objects]
+    - 404: {"detail": "Not found."}
+    """
     serializer_class = PostSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = PostFilter
 
+
     def get_queryset(self):
         user_id = self.kwargs.get('user_id')
         user = get_object_or_404(User,id=user_id)
-        posts = Post.objects.filter(owner=user).order_by('created_at')
+        posts = Post.objects.filter(owner=user,status='PUBLISHED').order_by('created_at')
         return posts
 
 
-@extend_schema(
-    tags=['Users'],
-    summary='Get current user info',
-    description='Get basic information about the currently authenticated user.',
-    responses={
-        200: {
-            'type': 'object',
-            'properties': {
-                'is_auth': {'type': 'boolean', 'nullable': True, 'description': 'Whether user is authenticated'},
-                'id': {'type': 'integer', 'nullable': True, 'description': 'User ID if authenticated'}
-            }
-        }
-    }
-)
+class ListUserDrafts(ListAPIView):
+    """
+    List user drafts
+    
+    Goal: Retrieve all draft posts created by the authenticated user
+    Path: GET /users/drafts/
+    Authentication: Required
+    
+    Request Body: None
+    
+    Response:
+    - 200: [PostSerializer objects]
+    """
+    serializer_class = PostSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = PostFilter
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+        posts = Post.objects.filter(owner=user,status='DRAFT').order_by('created_at')
+        return posts
+
 @api_view(['GET'])
 def current_user_info(request):
+    """
+    Get current user info
+    
+    Goal: Get basic information about the currently authenticated user
+    Path: GET /users/current/
+    Authentication: Not required
+    
+    Request Body: None
+    
+    Response:
+    - 200: {
+        "is_auth": true/false,
+        "id": 1 (if authenticated) or null (if not authenticated)
+    }
+    """
     return Response({
         'is_auth' : request.user.is_authenticated if request.user else None,
         'id' :  request.user.id if request.user else None,
     })
 
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_profile_picture(request):
+    """
+    Upload profile picture
+    
+    Goal: Upload a profile picture for the currently authenticated user
+    Path: POST /users/profile/picture/
+    Authentication: Required
+    
+    Request Body:
+    - multipart/form-data with 'pfp' field containing the image file
+    
+    Response:
+    - 200: {"message": "Profile picture uploaded successfully"}
+    - 400: {"message": "No profile picture file found in request"}
+    """
+    
+    user = request.user
+    profile = user.profile
+    
+    if profile.pfp:
+
+        profile.pfp.delete()
+    
+    pfp_file = request.FILES.get('pfp')
+    
+    if pfp_file:
+        profile.pfp = pfp_file
+        profile.save()
+
+
+    else:
+        return Response({'message': 'No profile picture file found in request'},status=status.HTTP_400_BAD_REQUEST)
+
+    
+    return Response({'message': 'Profile picture uploaded successfully'},status=status.HTTP_200_OK)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def remove_profile_picture(request):
+    """
+    Remove profile picture
+    
+    Goal: Remove the profile picture for the currently authenticated user
+    Path: DELETE /users/profile/picture/
+    Authentication: Required
+    
+    Request Body: None
+    
+    Response:
+    - 200: {"message": "Profile picture removed successfully"}
+    """
+    user = request.user
+    profile = user.profile
+    if profile.pfp:
+        profile.pfp.delete()
+    profile.pfp = None
+    profile.save()
+    return Response({'message': 'Profile picture removed successfully'},status=status.HTTP_200_OK)
 
 
 

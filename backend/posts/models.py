@@ -22,7 +22,7 @@ class Post(models.Model):
         ('DRAFT','DRAFT'),
         ('PUBLISHED','PUBLISHED')
     ]
-    savers = models.ManyToManyField(User,related_name='saved_posts',null=True,blank=True)
+    savers = models.ManyToManyField(User,related_name='saved_posts',blank=True)
     status = models.CharField(choices=STATUS_CHOICES,null=True,blank=True,default='DRAFT')   #used later for drafts and validation
 
 
@@ -41,7 +41,7 @@ class Comment(models.Model):
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     parent_comment = models.ForeignKey('self',related_name='sub_comments',on_delete=models.CASCADE,null=True,blank=True)
-
+    likes = models.ManyToManyField(User,related_name='liked_comments')
 
 
 
@@ -65,3 +65,8 @@ class PostView(models.Model):
     def __str__(self):
         return f"View of {self.post.title} at {self.timestamp}"
 
+
+class CommentLike(models.Model):
+    user = models.ForeignKey(User,related_name='comment_likes',on_delete=models.CASCADE)
+    comment = models.ForeignKey(Comment,related_name='comment_likes',on_delete=models.CASCADE)
+    time_stamp = models.DateTimeField(auto_now_add=True)

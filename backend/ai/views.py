@@ -3,43 +3,24 @@ from .utils import TagsAi,SummaryAi
 from rest_framework.response import Response
 from posts.models import Post
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 
-@extend_schema(
-    tags=['AI'],
-    summary='Get AI-generated tags for a post',
-    description='Use AI to generate relevant tags for a specific post based on its content.',
-    responses={
-        200: {
-            'type': 'object',
-            'properties': {
-                'tags': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                    'description': 'List of AI-generated tags'
-                }
-            }
-        },
-        404: {
-            'type': 'object',
-            'properties': {
-                'detail': {'type': 'string', 'example': 'Not found.'}
-            }
-        }
-    },
-    parameters=[
-        OpenApiParameter(
-            name='post_id',
-            location=OpenApiParameter.QUERY,
-            description='ID of the post to generate tags for',
-            required=True,
-            type=int
-        )
-    ]
-)
 @api_view(['GET'])
 def get_tags_for_post(request):
+    """
+    Get AI-generated tags for a post
+    
+    Goal: Use AI to generate relevant tags for a specific post based on its content
+    Path: GET /ai/tags/?post_id=<int>
+    Authentication: Not required
+    
+    Request Body: None
+    Query Parameters: post_id (required)
+    
+    Response:
+    - 200: {"tags": ["tag1", "tag2", "tag3"]}
+    - 404: {"detail": "Not found."}
+    """
     post_id = request.GET.get('post_id')
     post = get_object_or_404(Post,id=post_id)
     ai = TagsAi(post)
@@ -47,39 +28,22 @@ def get_tags_for_post(request):
     return Response(rslt)
 
 
-@extend_schema(
-    tags=['AI'],
-    summary='Get AI-generated summary for a post',
-    description='Use AI to generate a summary of a specific post based on its content.',
-    responses={
-        200: {
-            'type': 'object',
-            'properties': {
-                'summary': {
-                    'type': 'string',
-                    'description': 'AI-generated summary of the post'
-                }
-            }
-        },
-        404: {
-            'type': 'object',
-            'properties': {
-                'detail': {'type': 'string', 'example': 'Not found.'}
-            }
-        }
-    },
-    parameters=[
-        OpenApiParameter(
-            name='post_id',
-            location=OpenApiParameter.QUERY,
-            description='ID of the post to generate summary for',
-            required=True,
-            type=int
-        )
-    ]
-)
 @api_view(['GET'])
 def get_summary_for_post(request):
+    """
+    Get AI-generated summary for a post
+    
+    Goal: Use AI to generate a summary of a specific post based on its content
+    Path: GET /ai/summary/?post_id=<int>
+    Authentication: Not required
+    
+    Request Body: None
+    Query Parameters: post_id (required)
+    
+    Response:
+    - 200: {"summary": "AI-generated summary of the post content..."}
+    - 404: {"detail": "Not found."}
+    """
     post_id = request.GET.get('post_id')
     post = get_object_or_404(Post,id=post_id)
     ai = SummaryAi(post)

@@ -1,64 +1,38 @@
 from rest_framework.decorators import api_view
 from rest_framework.generics import ListCreateAPIView,RetrieveUpdateDestroyAPIView,ListAPIView
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 from .permissions import PostPermission
 from .serializers import CommentSerializer
 from django.shortcuts import get_object_or_404
 from .models import Post,Comment
 from rest_framework.throttling import UserRateThrottle
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 from rest_framework.permissions import IsAuthenticated
+from .email import send_mail
 
-@extend_schema(
-    tags=['Comments'],
-    summary='List and create comments',
-    description='Get all comments for a specific post or create a new comment. Rate limited for creation.',
-    methods=['GET'],
-    responses={
-        200: CommentSerializer(many=True)
-    },
-    parameters=[
-        OpenApiParameter(
-            name='post_id',
-            location=OpenApiParameter.PATH,
-            description='ID of the post to get comments for',
-            required=True,
-            type=int
-        )
-    ]
-)
-@extend_schema(
-    tags=['Comments'],
-    summary='Create a new comment',
-    description='Create a new comment on a specific post. Can be a reply to another comment.',
-    methods=['POST'],
-    request=CommentSerializer,
-    responses={
-        201: CommentSerializer,
-        400: {
-            'type': 'object',
-            'properties': {
-                'field_name': {'type': 'array', 'items': {'type': 'string'}}
-            }
-        }
-    },
-    parameters=[
-        OpenApiParameter(
-            name='post_id',
-            location=OpenApiParameter.PATH,
-            description='ID of the post to comment on',
-            required=True,
-            type=int
-        ),
-        OpenApiParameter(
-            name='parent_comment_id',
-            location=OpenApiParameter.QUERY,
-            description='ID of the parent comment (for replies)',
-            required=False,
-            type=int
-        )
-    ]
-)
 class CommentListCreate(ListCreateAPIView):
+    """
+    List and create comments
+    
+    Goal: Get all comments for a specific post or create a new comment
+    Path: GET/POST /posts/<int:post_id>/comments/
+    Authentication: Required for POST, not required for GET
+    Rate Limiting: UserRateThrottle for POST requests
+    
+    Request Body (POST):
+    {
+        "content": "Comment content..."
+    }
+    
+    Query Parameters (POST):
+    - parent_comment_id (optional): ID of parent comment for replies
+    
+    Response:
+    - GET 200: [CommentSerializer objects]
+    - POST 201: CommentSerializer object
+    - POST 400: {"field_name": ["error message"]}
+    """
     permission_classes = [PostPermission]
     serializer_class = CommentSerializer
     def get_throttles(self):
@@ -79,7 +53,6 @@ class CommentListCreate(ListCreateAPIView):
         if parent_comment_id:
             try:   #try fetching the parent comment
                 parent_comment = get_object_or_404(Comment,id=parent_comment_id)
-               # print("here",'\n'*10)
             except:  #set to None
                 parent_comment = None
         else:
@@ -88,113 +61,36 @@ class CommentListCreate(ListCreateAPIView):
 
 
         serializer.save(owner = self.request.user, parent_comment = parent_comment,post=post)
+        #check if the owner accepts notifications
+        if self.request.user.profile.accept_notifications:
+            send_mail(self.request.user.email, 'New comment', f'You have a new comment on your post {post.title}')
 
     def get_queryset(self):
         post = self.get_object()
-        return Comment.objects.filter(post=post).order_by('-created_at')
+        return Comment.objects.filter(post=post,parent_comment=None).order_by('-created_at')
 
 
-@extend_schema(
-    tags=['Comments'],
-    summary='Get a specific comment',
-    description='Retrieve a specific comment by its ID.',
-    methods=['GET'],
-    responses={
-        200: CommentSerializer,
-        404: {
-            'type': 'object',
-            'properties': {
-                'detail': {'type': 'string', 'example': 'Not found.'}
-            }
-        }
-    },
-    parameters=[
-        OpenApiParameter(
-            name='post_id',
-            location=OpenApiParameter.PATH,
-            description='ID of the post',
-            required=True,
-            type=int
-        ),
-        OpenApiParameter(
-            name='comment_id',
-            location=OpenApiParameter.PATH,
-            description='ID of the comment to retrieve',
-            required=True,
-            type=int
-        )
-    ]
-)
-@extend_schema(
-    tags=['Comments'],
-    summary='Update a comment',
-    description='Update a specific comment. Only the comment owner can update it.',
-    methods=['PUT', 'PATCH'],
-    request=CommentSerializer,
-    responses={
-        200: CommentSerializer,
-        400: {
-            'type': 'object',
-            'properties': {
-                'field_name': {'type': 'array', 'items': {'type': 'string'}}
-            }
-        },
-        403: {
-            'type': 'object',
-            'properties': {
-                'detail': {'type': 'string', 'example': 'You do not have permission to perform this action.'}
-            }
-        }
-    },
-    parameters=[
-        OpenApiParameter(
-            name='post_id',
-            location=OpenApiParameter.PATH,
-            description='ID of the post',
-            required=True,
-            type=int
-        ),
-        OpenApiParameter(
-            name='comment_id',
-            location=OpenApiParameter.PATH,
-            description='ID of the comment to update',
-            required=True,
-            type=int
-        )
-    ]
-)
-@extend_schema(
-    tags=['Comments'],
-    summary='Delete a comment',
-    description='Delete a specific comment. Only the comment owner can delete it.',
-    methods=['DELETE'],
-    responses={
-        204: OpenApiResponse(description='Comment deleted successfully'),
-        403: {
-            'type': 'object',
-            'properties': {
-                'detail': {'type': 'string', 'example': 'You do not have permission to perform this action.'}
-            }
-        }
-    },
-    parameters=[
-        OpenApiParameter(
-            name='post_id',
-            location=OpenApiParameter.PATH,
-            description='ID of the post',
-            required=True,
-            type=int
-        ),
-        OpenApiParameter(
-            name='comment_id',
-            location=OpenApiParameter.PATH,
-            description='ID of the comment to delete',
-            required=True,
-            type=int
-        )
-    ]
-)
 class CommentRetrieveUpdateDelete(RetrieveUpdateDestroyAPIView):
+    """
+    Get, update, or delete a specific comment
+    
+    Goal: Retrieve, update, or delete a specific comment by its ID
+    Path: GET/PUT/PATCH/DELETE /posts/<int:post_id>/comments/<int:comment_id>/
+    Authentication: Required for PUT/PATCH/DELETE, not required for GET
+    
+    Request Body (PUT/PATCH):
+    {
+        "content": "Updated comment content..."
+    }
+    
+    Response:
+    - GET 200: CommentSerializer object
+    - PUT/PATCH 200: CommentSerializer object
+    - DELETE 204: No content
+    - 400: {"field_name": ["error message"]}
+    - 403: {"detail": "You do not have permission to perform this action."}
+    - 404: {"detail": "Not found."}
+    """
     lookup_field = 'comment_id'
     serializer_class = CommentSerializer
     queryset = Comment.objects.all().order_by('-created_at')
@@ -207,10 +103,66 @@ class CommentRetrieveUpdateDelete(RetrieveUpdateDestroyAPIView):
 
 
 
-#fetch all comments of a user
 class UserComments(ListAPIView):
+    """
+    Fetch all comments of a user
+    
+    Goal: Retrieve all comments created by the authenticated user
+    Path: GET /posts/user/comments/
+    Authentication: Required
+    
+    Request Body: None
+    
+    Response:
+    - 200: [CommentSerializer objects]
+    """
     permission_classes = [IsAuthenticated]
     serializer_class = CommentSerializer
     def get_queryset(self):
         user = self.request.user
         return Comment.objects.filter(owner=user).order_by('-created_at')
+
+
+class LikeComment(APIView):
+    """
+    Like or unlike a comment
+    
+    Goal: Toggle like status for a specific comment. If already liked, it will be unliked.
+    Path: POST /posts/<int:post_id>/comments/<int:comment_id>/like/
+    Authentication: Required
+    
+    Request Body: None
+    
+    Response:
+    - 200: {
+        "message": "Comment liked successfully" or "Comment unliked successfully",
+        "is_liked": true/false,
+        "likes_count": 5
+    }
+    - 404: {"detail": "Comment not found."}
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, post_id, comment_id):
+        comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
+        user = request.user
+        
+        # Check if user has already liked this comment
+        if comment.likes.filter(id=user.id).exists():
+            # Unlike the comment
+            comment.likes.remove(user)
+            is_liked = False
+            message = 'Comment unliked successfully'
+        else:
+            # Like the comment
+            comment.likes.add(user)
+            is_liked = True
+            message = 'Comment liked successfully'
+        
+        likes_count = comment.likes.count()
+        
+        return Response({
+            'message': message,
+            'is_liked': is_liked,
+            'likes_count': likes_count
+        }, status=status.HTTP_200_OK)

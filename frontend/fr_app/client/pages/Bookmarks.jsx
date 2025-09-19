@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Bookmark, Search, Filter, SortDesc } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import PostCard from '../components/PostCard'
+import { apiClient } from '../lib/api'
+import { transformPosts } from '../lib/utils.js'
 
 const BOOKMARKED_POSTS = [
   {
@@ -116,7 +119,28 @@ export default function Bookmarks() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTag, setSelectedTag] = useState('All')
   const [sortBy, setSortBy] = useState('recent')
-  const [posts] = useState(BOOKMARKED_POSTS)
+  const [posts, setPosts] = useState([])
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const saved = await apiClient.getSavedPosts()
+        setPosts(transformPosts(saved))
+      } catch (e) {
+        setPosts(BOOKMARKED_POSTS)
+      }
+    }
+    load()
+  }, [])
+
+  const refreshSaved = async () => {
+    try {
+      const saved = await apiClient.getSavedPosts()
+      setPosts(transformPosts(saved))
+    } catch (e) {
+      // ignore
+    }
+  }
 
   const allTags = ['All', ...Array.from(new Set(posts.flatMap(post => post.tags)))]
 
@@ -242,7 +266,7 @@ export default function Bookmarks() {
         {filteredPosts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-16">
             {filteredPosts.map(post => (
-              <PostCard key={post.id} {...post} />
+              <PostCard key={post.id} {...post} isBookmarked={true} onBookmarkChange={refreshSaved} />
             ))}
           </div>
         ) : posts.length === 0 ? (
@@ -253,9 +277,9 @@ export default function Bookmarks() {
             <p className="text-blog-gray/60 text-lg mb-8 max-w-md mx-auto">
               Start saving posts that inspire you. Click the bookmark icon on any post to add it to your collection.
             </p>
-            <button className="bg-blog-green text-white px-6 py-3 rounded-lg hover:bg-blog-green/90 transition-colors">
+            <Link to="/" className="bg-blog-green text-white px-6 py-3 rounded-lg hover:bg-blog-green/90 transition-colors">
               Explore Posts
-            </button>
+            </Link>
           </div>
         ) : (
           /* No Results for Search/Filter */

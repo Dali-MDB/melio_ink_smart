@@ -11,5 +11,6 @@ urlpatterns = [
     path('profile/<int:user_id>/',view=views.view_profile),
     path('<int:user_id>/posts/',view=views.ListUserPosts.as_view()),
     path('current/',view=views.current_user_info),
-   
+    path('profile/upload_pfp/',view=views.upload_profile_picture),
+    path('profile/remove_pfp/',view=views.remove_profile_picture),
 ]

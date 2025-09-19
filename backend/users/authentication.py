@@ -7,7 +7,6 @@ from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 
 
 def generate_tokens(user):
@@ -17,47 +16,37 @@ def generate_tokens(user):
     return refresh_token,access_token
 
 
-@extend_schema(
-    tags=['Authentication'],
-    summary='Register a new user',
-    description='Create a new user account and return authentication tokens.',
-    request={
-        'application/json': {
-            'type': 'object',
-            'properties': {
-                'username': {'type': 'string', 'description': 'Username for the new account'},
-                'email': {'type': 'string', 'format': 'email', 'description': 'Email address'},
-                'password': {'type': 'string', 'description': 'Password for the account'},
-                'first_name': {'type': 'string', 'description': 'First name'},
-                'last_name': {'type': 'string', 'description': 'Last name'},
-                'bio': {'type': 'string', 'description': 'User bio'},
-                'location': {'type': 'string', 'description': 'User location'},
-                'website': {'type': 'string', 'description': 'User website'},
-                'birth_date': {'type': 'string', 'format': 'date', 'description': 'Birth date'},
-                'gender': {'type': 'string', 'description': 'Gender'}
-            },
-            'required': ['username', 'email', 'password']
-        }
-    },
-    responses={
-        200: {
-            'type': 'object',
-            'properties': {
-                'detail': {'type': 'string', 'example': 'the user has been registered successfully'},
-                'refresh_token': {'type': 'string', 'description': 'JWT refresh token'},
-                'access_token': {'type': 'string', 'description': 'JWT access token'}
-            }
-        },
-        400: {
-            'type': 'object',
-            'properties': {
-                'field_name': {'type': 'array', 'items': {'type': 'string'}}
-            }
-        }
-    }
-)
 @api_view(['POST'])
 def register(request):
+    """
+    Register a new user
+    
+    Goal: Create a new user account and return authentication tokens
+    Path: POST /users/auth/register/
+    Authentication: Not required
+    
+    Request Body:
+    {
+        "username": "johndoe",
+        "email": "john@example.com",
+        "password": "securepassword",
+        "first_name": "John",
+        "last_name": "Doe",
+        "bio": "User bio",
+        "location": "City, Country",
+        "website": "https://example.com",
+        "birth_date": "1990-01-01",
+        "gender": "M"
+    }
+    
+    Response:
+    - 200: {
+        "detail": "the user has been registered successfully",
+        "refresh_token": "jwt_refresh_token",
+        "access_token": "jwt_access_token"
+    }
+    - 400: {"field_name": ["error message"]}
+    """
     prof_ser = ProfileSerializer(data=request.data)
     if prof_ser.is_valid():
         user = prof_ser.save()
@@ -74,44 +63,29 @@ def register(request):
     return Response(prof_ser.errors,status=status.HTTP_400_BAD_REQUEST)
 
 
-@extend_schema(
-    tags=['Authentication'],
-    summary='Login user',
-    description='Authenticate user with email and password and return authentication tokens.',
-    request={
-        'application/json': {
-            'type': 'object',
-            'properties': {
-                'email': {'type': 'string', 'format': 'email', 'description': 'User email address'},
-                'password': {'type': 'string', 'description': 'User password'}
-            },
-            'required': ['email', 'password']
-        }
-    },
-    responses={
-        200: {
-            'type': 'object',
-            'properties': {
-                'refresh_token': {'type': 'string', 'description': 'JWT refresh token'},
-                'access_token': {'type': 'string', 'description': 'JWT access token'}
-            }
-        },
-        401: {
-            'type': 'object',
-            'properties': {
-                'error': {'type': 'string', 'example': 'Invalid credentials'}
-            }
-        },
-        404: {
-            'type': 'object',
-            'properties': {
-                'detail': {'type': 'string', 'example': 'no user with the provided credentials was found'}
-            }
-        }
-    }
-)
 @api_view(['POST'])
 def login(request):
+    """
+    Login user
+    
+    Goal: Authenticate user with email and password and return authentication tokens
+    Path: POST /users/auth/login/
+    Authentication: Not required
+    
+    Request Body:
+    {
+        "email": "john@example.com",
+        "password": "securepassword"
+    }
+    
+    Response:
+    - 200: {
+        "refresh_token": "jwt_refresh_token",
+        "access_token": "jwt_access_token"
+    }
+    - 401: {"error": "Invalid credentials"}
+    - 404: {"detail": "no user with the provided credentials was found"}
+    """
     email = request.data.get('email',None)
     password = request.data.get('password',None)
     if not email or not password:
@@ -140,41 +114,25 @@ def login(request):
 
     
 
-@extend_schema(
-    tags=['Authentication'],
-    summary='Get new access token',
-    description='Use refresh token to get a new access token.',
-    request={
-        'application/json': {
-            'type': 'object',
-            'properties': {
-                'refresh': {'type': 'string', 'description': 'JWT refresh token'}
-            },
-            'required': ['refresh']
-        }
-    },
-    responses={
-        200: {
-            'type': 'object',
-            'properties': {
-                'access_token': {'type': 'string', 'description': 'New JWT access token'}
-            }
-        },
-        400: {
-            'type': 'object',
-            'properties': {
-                'detail': {'type': 'string', 'example': 'no refresh token was provided'}
-            }
-        },
-        408: {
-            'type': 'object',
-            'properties': {
-                'detail': {'type': 'string', 'example': 'the refresh token has been expired, please login again'}
-            }
-        }
-    }
-)
 @api_view(['POST'])
+def get_access_token(request):
+    """
+    Get new access token
+    
+    Goal: Use refresh token to get a new access token
+    Path: POST /users/auth/access_token/
+    Authentication: Not required
+    
+    Request Body:
+    {
+        "refresh": "jwt_refresh_token"
+    }
+    
+    Response:
+    - 200: {"access_token": "new_jwt_access_token"}
+    - 400: {"detail": "no refresh token was provided"}
+    - 408: {"detail": "the refresh token has been expired, please login again"}
+    """
 def get_access_token(request):
     refresh_token = request.data.get('refresh',None)
     if not refresh_token:
